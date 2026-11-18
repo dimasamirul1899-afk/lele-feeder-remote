@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LeleFeeder Remote — Pakan Lele Otomatis</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+<!-- ===== AUTH (setup / login) ===== -->
+<div id="authView" class="auth-wrap hidden">
+  <div class="auth-card">
+    <h2 id="authTitle">LeleFeeder Remote</h2>
+    <p id="authDesc">Masuk untuk mengontrol alat pakan lele.</p>
+    <input id="authPw" type="password" placeholder="Password" autocomplete="current-password" minlength="6">
+    <button id="authBtn">Masuk</button>
+    <p id="authErr" class="errmsg hidden"></p>
+  </div>
+</div>
+
+<!-- ===== APP ===== -->
+<div id="appView" class="hidden">
+<header>
+  <div class="brand">
+    <div class="logo">🐟</div>
+    <div>
+      <h1>LeleFeeder Remote</h1>
+      <small>Alat pemberi makan lele otomatis · ESP32 + MQTT</small>
+    </div>
+  </div>
+  <div class="head-right">
+    <span class="clock" id="clock">--:-- WIB</span>
+    <select id="devSel" class="devsel" title="Pilih unit"></select>
+    <span id="statusPill" class="pill"><span class="dot"></span><span id="statusTxt">…</span></span>
+    <button id="logoutBtn" class="linkbtn">Keluar</button>
+  </div>
+</header>
+
+<main>
+  <div class="grid">
+
+    <!-- HERO -->
+    <section class="card hero span7">
+      <h2 id="devName">Kolam Lele 01</h2>
+      <p class="sub" id="devSub">Unit belum pernah terhubung.</p>
+      <div class="hero-row">
+        <button id="feedBtn" class="feedbtn" disabled>Beri Pakan<small>sekarang</small></button>
+        <div class="hero-mid">
+          <div class="bignum"><span id="todayG">0</span> <small>gram hari ini</small></div>
+          <div class="grams-row">
+            <input id="feedGrams" type="number" min="1" max="500" value="50" inputmode="numeric">
+            <span>gram per pencet</span>
+          </div>
+          <div class="nextfeed" id="nextFeed">—</div>
+        </div>
+      </div>
+      <div class="telemetry" id="telemetry">Menunggu telemetri device…</div>
+    </section>
+
+    <!-- STATS -->
+    <section class="card span5">
+      <h2>Ringkasan Pakan</h2>
+      <p class="sub">Dihitung dari sesi pakan yang tercatat (WIB).</p>
+      <div class="grid" style="gap:12px">
+        <div class="stat span4" style="grid-column: span 4">
+          <div class="num"><span id="stToday">0</span> <small>g</small></div>
+          <div class="lbl">Hari ini</div>
+          <div class="sess" id="stTodayS">0 sesi</div>
+        </div>
+        <div class="stat span4" style="grid-column: span 4">
+          <div class="num"><span id="stWeek">0</span> <small>g</small></div>
+          <div class="lbl">Minggu ini</div>
+          <div class="sess" id="stWeekS">0 sesi</div>
+        </div>
+        <div class="stat span4" style="grid-column: span 4">
+          <div class="num"><span id="stMonth">0</span> <small>g</small></div>
+          <div class="lbl">Bulan ini</div>
+          <div class="sess" id="stMonthS">0 sesi</div>
+        </div>
+      </div>
+      <h2 style="margin-top:20px">7 Hari Terakhir</h2>
+      <div id="chart" class="chart"></div>
+    </section>
+
+    <!-- SCHEDULE -->
+    <section class="card span7">
+      <h2>Jadwal &amp; Hari Aktif</h2>
+      <p class="sub">Jadwal disimpan di device — tetap jalan walau server mati. Waktu WIB.</p>
+      <div class="days" id="days"></div>
+      <div id="slots"></div>
+      <button id="addSlotBtn" class="addbtn" type="button">+ Tambah jadwal</button>
+      <button id="saveCfgBtn" class="savebtn" type="button">Simpan Jadwal</button>
+      <p id="cfgMsg" class="hint"></p>
+    </section>
+
+    <!-- SETTINGS -->
+    <section class="card span5">
+      <h2>Pengaturan Unit</h2>
+      <p class="sub">Kalibrasi &amp; identitas device.</p>
+      <div class="field">
+        <label for="setName">Nama kolam / unit</label>
+        <input id="setName" type="text" maxlength="40">
+      </div>
+      <div class="field">
+        <label for="setGps">Kalibrasi — gram per detik putaran</label>
+        <input id="setGps" type="number" min="1" max="100" step="1">
+        <div class="desc">1 detik putaran servo = sekian gram pakan. Ukur sekali: timbang pakan yang keluar dalam 10 detik, bagi 10.</div>
+      </div>
+      <button id="saveSetBtn" class="savebtn" type="button">Simpan Pengaturan</button>
+      <p id="setMsg" class="hint"></p>
+      <div class="kv" id="mqttInfo"></div>
+    </section>
+
+    <!-- LOGS -->
+    <section class="card span12">
+      <h2>Laporan</h2>
+      <p class="sub">Sesi pakan &amp; riwayat hidup-mati unit.</p>
+      <div class="tabs">
+        <button class="tabbtn on" data-tab="feed" type="button">Sesi Pakan</button>
+        <button class="tabbtn" data-tab="power" type="button">Hidup / Mati</button>
+      </div>
+      <div id="logFeed"></div>
+      <div id="logPower" class="hidden"></div>
+    </section>
+
+  </div>
+</main>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+<script src="/app.js"></script>
+</body>
+</html>
